@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Flights – UAS Logbook{% endblock %}
+
+{% block content %}
+
+<div class="app-actions">
+    <div class="app-actions-left">
+        <div class="app-actions-title">My flights</div>
+        <div class="app-actions-sub">
+            Review, filter and export your UAS flying experience.
+        </div>
+    </div>
+    <div class="app-actions-right">
+        <a href="{% url 'flight_export_csv' %}" class="btn btn-secondary">
+            ⬇ Export CSV
+        </a>
+        <a href="{% url 'flight_create' %}" class="btn btn-primary">
+            ✚ New flight
+        </a>
+        <a href="{% url 'logout' %}" class="btn btn-ghost">
+            Logout
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<details class="filter-panel" {% if filters.start or filters.end or filters.uav or filters.role %}open{% endif %}>
+    <summary class="filter-summary">
+        <div class="filter-summary-label">
+            <span>Filters</span>
+            {% if filters.start or filters.end or filters.uav or filters.role %}
+                <span class="filter-summary-badge">Active</span>
+            {% else %}
+                <span class="filter-summary-badge">None</span>
+            {% endif %}
+        </div>
+        <span>▼</span>
+    </summary>
+    <div class="filter-body">
+        <form method="get" class="form-section-grid" style="align-items:flex-end;">
+            <div class="form-field">
+                <label class="form-label" for="id_start">From date</label>
+                <input type="date" id="id_start" name="start" value="{{ filters.start }}">
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="id_end">To date</label>
+                <input type="date" id="id_end" name="end" value="{{ filters.end }}">
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="id_uav">UAV type</label>
+                <input type="text" id="id_uav" name="uav" value="{{ filters.uav }}" placeholder="e.g. Mavic, Wingtra">
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="id_role">Role</label>
+                <select id="id_role" name="role">
+                    <option value="">All roles</option>
+                    {% for value,label in roles %}
+                        <option value="{{ value }}" {% if filters.role == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-field">
+                <button type="submit" class="btn btn-secondary">Apply filters</button>
+            </div>
+        </form>
+    </div>
+</details>
+
+<!-- Totals (filtered) -->
+<div class="totals-card">
+    <div class="total-item">
+        <div class="total-label">Flight time (filtered)</div>
+        <div class="total-value">{{ totals.total_flight|default:0 }} min</div>
+    </div>
+    <div class="total-item">
+        <div class="total-label">Block time (filtered)</div>
+        <div class="total-value">{{ totals.total_block|default:0 }} min</div>
+    </div>
+    <div class="total-item">
+        <div class="total-label">Engine time (filtered)</div>
+        <div class="total-value">{{ totals.total_engine|default:0 }} min</div>
+    </div>
+    <div class="total-item">
+        <div class="total-label">GCS time (filtered)</div>
+        <div class="total-value">{{ totals.total_gcs|default:0 }} min</div>
+    </div>
+</div>
+
+<!-- Stats (all time / last 30 days) -->
+<div class="totals-card" style="margin-top:8px;">
+    <div class="total-item">
+        <div class="total-label">Flights (all time)</div>
+        <div class="total-value">{{ stats.total_flights }}</div>
+    </div>
+    <div class="total-item">
+        <div class="total-label">Flights (last 30 days)</div>
+        <div class="total-value">{{ stats.recent_flights }}</div>
+    </div>
+    <div class="total-item">
+        <div class="total-label">Flight time (last 30 days)</div>
+        <div class="total-value">{{ stats.recent_flight_time }} min</div>
+    </div>
+    <div class="total-item">
+        <div class="total-label">Most flown UAV</div>
+        <div class="total-value">
+            {% if stats.most_flown_uav %}
+                {{ stats.most_flown_uav }} ({{ stats.most_flown_uav_time }} min)
+            {% else %}
+                –
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Flights table -->
+<div class="table-card" style="margin-top:18px;">
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>UAV</th>
+                    <th>Reg</th>
+                    <th>Dep</th>
+                    <th>Arr</th>
+                    <th>Role</th>
+                    <th>Flight (min)</th>
+                    <th>Block (min)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for flight in flights %}
+                <tr>
+                    <td>{{ flight.date }}</td>
+                    <td>{{ flight.uav_type }}</td>
+                    <td>{{ flight.uav_reg }}</td>
+                    <td>{{ flight.departure }}</td>
+                    <td>{{ flight.arrival }}</td>
+                    <td>
+                        <span class="tag">
+                            {{ flight.get_pilot_role_display }}
+                        </span>
+                    </td>
+                    <td>{{ flight.flight_time }}</td>
+                    <td>{{ flight.block_time }}</td>
+                    <td>
+                        <a href="{% url 'flight_edit' flight.pk %}" class="btn btn-secondary">Edit</a>
+                        <a href="{% url 'flight_delete' flight.pk %}" class="btn btn-ghost">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="9">No flights logged yet. Click “New flight” to add your first entry.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

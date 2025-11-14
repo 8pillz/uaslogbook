@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Delete flight – UAS Logbook{% endblock %}
+
+{% block content %}
+
+<div class="app-actions">
+    <div class="app-actions-left">
+        <div class="app-actions-title">Delete flight</div>
+        <div class="app-actions-sub">
+            This cannot be undone.
+        </div>
+    </div>
+    <div class="app-actions-right">
+        <a href="{% url 'flight_list' %}" class="btn btn-ghost">← Back</a>
+    </div>
+</div>
+
+<div class="form-card">
+    <div class="delete-title">
+        Delete flight on {{ flight.date }} – {{ flight.uav_type }} ({{ flight.uav_reg }})?
+    </div>
+    <div class="delete-text">
+        This will permanently remove this entry from your logbook.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-footer">
+            <a href="{% url 'flight_list' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-danger">Yes, delete</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Sign in – UAS Logbook{% endblock %}
+
+{% block content %}
+
+<div class="auth-wrapper">
+    <div class="auth-title">Sign in</div>
+    <div class="auth-subtitle">
+        Access your personal UAS flight log.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-field" style="margin-bottom: 10px;">
+                <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% for error in field.errors %}
+                    <div style="font-size: 0.75rem; color: #f97373;">
+                        {{ error }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="form-footer" style="justify-content: flex-start; margin-top: 10px;">
+            <button type="submit" class="btn btn-primary">Sign in</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

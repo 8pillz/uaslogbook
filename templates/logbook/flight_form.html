@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Flight entry – UAS Logbook{% endblock %}
+
+{% block content %}
+
+<div class="app-actions">
+    <div class="app-actions-left">
+        <div class="app-actions-title">Flight entry</div>
+        <div class="app-actions-sub">
+            Log one complete UAS mission with aircraft, role and times.
+        </div>
+    </div>
+    <div class="app-actions-right">
+        <a href="{% url 'flight_list' %}" class="btn btn-ghost">← Back to flights</a>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div style="color:#f97373; font-size:0.8rem; margin-bottom:10px;">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <!-- Flight section -->
+        <div class="form-section">
+            <div class="form-section-title">Flight</div>
+            <div class="form-section-grid">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.date.id_for_label }}">Date</label>
+                    {{ form.date }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.pilot_role.id_for_label }}">Pilot role</label>
+                    {{ form.pilot_role }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.departure.id_for_label }}">Departure</label>
+                    {{ form.departure }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.arrival.id_for_label }}">Arrival</label>
+                    {{ form.arrival }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.off_block.id_for_label }}">Off block</label>
+                    {{ form.off_block }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.on_block.id_for_label }}">On block</label>
+                    {{ form.on_block }}
+                </div>
+            </div>
+        </div>
+
+        <!-- UAV / GCS section -->
+        <div class="form-section">
+            <div class="form-section-title">UAV &amp; GCS</div>
+            <div class="form-section-grid">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.uav_type.id_for_label }}">UAV type</label>
+                    {{ form.uav_type }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.uav_reg.id_for_label }}">UAV registration</label>
+                    {{ form.uav_reg }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.engine_class.id_for_label }}">Engine class (SE/ME)</label>
+                    {{ form.engine_class }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.gcs_type.id_for_label }}">GCS type</label>
+                    {{ form.gcs_type }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.gcs_reg.id_for_label }}">GCS registration</label>
+                    {{ form.gcs_reg }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Times section -->
+        <div class="form-section">
+            <div class="form-section-title">Times</div>
+            <div class="form-section-grid">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.connection_time.id_for_label }}">GCS connected</label>
+                    {{ form.connection_time }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.disconnection_time.id_for_label }}">GCS disconnected</label>
+                    {{ form.disconnection_time }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.engine_start.id_for_label }}">Engine start</label>
+                    {{ form.engine_start }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.engine_stop.id_for_label }}">Engine stop</label>
+                    {{ form.engine_stop }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.takeoff.id_for_label }}">Takeoff</label>
+                    {{ form.takeoff }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.landing.id_for_label }}">Landing</label>
+                    {{ form.landing }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Takeoffs / landings section -->
+        <div class="form-section">
+            <div class="form-section-title">Takeoffs &amp; landings</div>
+            <div class="form-section-grid">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.takeoff_day.id_for_label }}">Takeoffs (day)</label>
+                    {{ form.takeoff_day }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.takeoff_night.id_for_label }}">Takeoffs (night)</label>
+                    {{ form.takeoff_night }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.landing_day.id_for_label }}">Landings (day)</label>
+                    {{ form.landing_day }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.landing_night.id_for_label }}">Landings (night)</label>
+                    {{ form.landing_night }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulator section -->
+        <div class="form-section">
+            <div class="form-section-title">Simulator</div>
+            <div class="form-section-grid">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.is_simulator.id_for_label }}">Simulator session</label>
+                    {{ form.is_simulator }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.simulator_type.id_for_label }}">Simulator type</label>
+                    {{ form.simulator_type }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.simulator_time.id_for_label }}">Simulator time (min)</label>
+                    {{ form.simulator_time }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Remarks section -->
+        <div class="form-section">
+            <div class="form-section-title">Remarks</div>
+            <div class="form-field">
+                <label class="form-label" for="{{ form.remarks.id_for_label }}">Remarks</label>
+                {{ form.remarks }}
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <a href="{% url 'flight_list' %}" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save flight</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

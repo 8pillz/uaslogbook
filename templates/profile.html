@@ -1,101 +1,87 @@
 {% extends "base.html" %}
 
-{% block title %}Profile – UAS Logbook{% endblock %}
+{% block title %}Profile & documents – UAS Logbook{% endblock %}
 
 {% block content %}
-
 <div class="app-actions">
     <div class="app-actions-left">
         <div class="app-actions-title">Profile & documents</div>
         <div class="app-actions-sub">
-            Keep your pilot documents and photo handy for quick access.
+            Manage your photo, certificates and preferences.
         </div>
-    </div>
-    <div class="app-actions-right">
-        <a href="{% url 'flight_list' %}" class="btn btn-ghost">← Back to flights</a>
     </div>
 </div>
 
-<div class="form-card" style="display:grid; grid-template-columns: 220px 1fr; gap:18px;">
-    <!-- Left: profile card -->
-    <div style="border-right:1px solid var(--border); padding-right:16px;">
-        <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
-            <div style="width:120px; height:120px; border-radius:50%; overflow:hidden; border:1px solid var(--border); background:#020617; display:flex; align-items:center; justify-content:center;">
-                {% if profile.profile_photo %}
-                    <img src="{{ profile.profile_photo.url }}" alt="Profile photo" style="width:100%; height:100%; object-fit:cover;">
-                {% else %}
-                    <span style="font-size:2.2rem; color:var(--muted);">
-                        {{ request.user.username|first|upper }}
-                    </span>
-                {% endif %}
-            </div>
-            <div style="text-align:center;">
-                <div style="font-weight:500;">{{ request.user.username }}</div>
-                {% if request.user.email %}
-                    <div style="font-size:0.8rem; color:var(--muted);">{{ request.user.email }}</div>
-                {% endif %}
+<div class="profile-layout">
+    <section class="profile-card">
+        <h2>Pilot</h2>
+        <div class="profile-header">
+            {% if profile.profile_photo %}
+                <img src="{{ profile.profile_photo.url }}" alt="Profile photo" class="profile-avatar">
+            {% else %}
+                <div class="profile-avatar-empty">
+                    {{ request.user.username|first|upper }}
+                </div>
+            {% endif %}
+            <div>
+                <div class="profile-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                <div class="profile-username">@{{ request.user.username }}</div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- Right: documents & uploads -->
-    <div>
+    <section class="profile-card">
+        <h2>Documents & preferences</h2>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-
-            <div class="form-section">
-                <div class="form-section-title">Documents</div>
-                <div class="form-section-grid">
-                    <div class="form-field">
-                        <label class="form-label" for="{{ form.profile_photo.id_for_label }}">
-                            Profile photo
-                        </label>
-                        {{ form.profile_photo }}
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-label" for="{{ form.medical_certificate.id_for_label }}">
-                            Medical certificate (PDF)
-                        </label>
-                        {{ form.medical_certificate }}
-                        {% if profile.medical_certificate %}
-                            <div style="margin-top:4px; font-size:0.75rem;">
-                                Current: <a href="{{ profile.medical_certificate.url }}" target="_blank">Download PDF</a>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-label" for="{{ form.flight_crew_license.id_for_label }}">
-                            Flight crew license (PDF)
-                        </label>
-                        {{ form.flight_crew_license }}
-                        {% if profile.flight_crew_license %}
-                            <div style="margin-top:4px; font-size:0.75rem;">
-                                Current: <a href="{{ profile.flight_crew_license.url }}" target="_blank">Download PDF</a>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-label" for="{{ form.other_document.id_for_label }}">
-                            Other document
-                        </label>
-                        {{ form.other_document }}
-                        {% if profile.other_document %}
-                            <div style="margin-top:4px; font-size:0.75rem;">
-                                Current: <a href="{{ profile.other_document.url }}" target="_blank">Download file</a>
-                            </div>
-                        {% endif %}
-                    </div>
+            <div class="form-section-grid">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.profile_photo.id_for_label }}">Profile photo</label>
+                    {{ form.profile_photo }}
                 </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.medical_certificate.id_for_label }}">Medical certificate (PDF)</label>
+                    {{ form.medical_certificate }}
+                    {% if profile.medical_certificate %}
+                        <div class="doc-link">
+                            Current: <a href="{{ profile.medical_certificate.url }}" target="_blank">Open</a>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.flight_crew_license.id_for_label }}">Flight crew licence (PDF)</label>
+                    {{ form.flight_crew_license }}
+                    {% if profile.flight_crew_license %}
+                        <div class="doc-link">
+                            Current: <a href="{{ profile.flight_crew_license.url }}" target="_blank">Open</a>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.other_document.id_for_label }}">Other document</label>
+                    {{ form.other_document }}
+                    {% if profile.other_document %}
+                        <div class="doc-link">
+                            Current: <a href="{{ profile.other_document.url }}" target="_blank">Open</a>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if form.time_display_unit %}
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.time_display_unit.id_for_label }}">Flight time display</label>
+                    {{ form.time_display_unit }}
+                </div>
+                {% endif %}
             </div>
 
-            <div class="form-footer">
+            <div class="form-footer" style="margin-top:12px;">
                 <button type="submit" class="btn btn-primary">Save profile</button>
             </div>
         </form>
-    </div>
+    </section>
 </div>
-
 {% endblock %}

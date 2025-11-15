@@ -1,14 +1,58 @@
 from datetime import timedelta
 import csv
-
+from io import TextIOWrapper
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
-
+from .forms import FlightLogEntryForm, PilotProfileForm, PilotSettingsForm
 from .models import FlightLogEntry, PilotProfile
-from .forms import FlightLogEntryForm, PilotProfileForm
+from .forms import FlightLogEntryForm, PilotProfileForm, PilotSettingsForm 
+
+@login_required
+def audit_view(request):
+    """
+    Compact, read-only view to show pilot documents and flights
+    in a way that is easy to show to an auditor.
+    """
+    profile, _ = PilotProfile.objects.get_or_create(user=request.user)
+
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+
+    flights = FlightLogEntry.objects.filter(user=request.user).order_by("-date")
+
+    if start:
+        flights = flights.filter(date__gte=start)
+    if end:
+        flights = flights.filter(date__lte=end)
+
+    totals = flights.aggregate(
+        total_flight=Sum("flight_time"),
+        total_takeoff_day=Sum("takeoff_day"),
+        total_takeoff_night=Sum("takeoff_night"),
+        total_landing_day=Sum("landing_day"),
+        total_landing_night=Sum("landing_night"),
+    )
+
+    today = timezone.now().date()
+    last_90 = today - timezone.timedelta(days=90)
+    recent = FlightLogEntry.objects.filter(user=request.user, date__gte=last_90)
+    recent_time = recent.aggregate(Sum("flight_time"))["flight_time__sum"] or 0
+
+    context = {
+        "profile": profile,
+        "flights": flights,
+        "totals": totals,
+        "recent_90_days_time": recent_time,
+        "filters": {
+            "start": start or "",
+            "end": end or "",
+        },
+    }
+    return render(request, "audit.html", context)
 
 
 @login_required
@@ -33,9 +77,6 @@ def flight_list(request):
     # Totals for filtered flights
     totals = flights.aggregate(
         total_flight=Sum("flight_time"),
-        total_block=Sum("block_time"),
-        total_engine=Sum("engine_time"),
-        total_gcs=Sum("gcs_time"),
     )
 
     # --- Stats (all-time / last 30 days on full dataset) ---
@@ -45,6 +86,7 @@ def flight_list(request):
     recent_qs = FlightLogEntry.objects.filter(date__gte=last_30)
     recent_time = recent_qs.aggregate(Sum("flight_time")).get("flight_time__sum") or 0
 
+    # most flown UAV by total flight_time
     most_flown_qs = (
         FlightLogEntry.objects
         .values("uav_type")
@@ -59,15 +101,23 @@ def flight_list(request):
         most_flown_uav = None
         most_flown_uav_time = 0
 
+    total_takeoffs = FlightLogEntry.objects.aggregate(
+        total=Sum("takeoff_day") + Sum("takeoff_night")
+    )["total"] or 0
+    total_landings = FlightLogEntry.objects.aggregate(
+        total=Sum("landing_day") + Sum("landing_night")
+    )["total"] or 0
+
     stats = {
         "total_flights": FlightLogEntry.objects.count(),
         "recent_flights": recent_qs.count(),
         "recent_flight_time": recent_time,
         "most_flown_uav": most_flown_uav,
         "most_flown_uav_time": most_flown_uav_time,
+        "total_takeoffs": total_takeoffs,
+        "total_landings": total_landings,
     }
 
-    # For role filter dropdown
     roles = FlightLogEntry.PilotRole.choices
 
     context = {
@@ -84,6 +134,101 @@ def flight_list(request):
     }
     return render(request, "logbook/flight_list.html", context)
 
+@login_required
+def flight_import_csv(request):
+    """
+    Import flights from a CSV file.
+    Expected columns (same as export, but you can start minimal):
+    Date, Departure, Arrival, Departure time, Arrival time,
+    UAV configuration, UAV model, UAV registration,
+    GCS form factor, GCS registration,
+    EASA class, Mission type, GCS software,
+    Takeoffs (day), Takeoffs (night), Landings (day), Landings (night),
+    Flight time (min), Simulator?, Simulator type, Simulator time (min), Remarks
+    """
+    if request.method == "POST" and request.FILES.get("file"):
+        f = request.FILES["file"]
+        try:
+            wrapper = TextIOWrapper(f.file, encoding="utf-8")
+            reader = csv.DictReader(wrapper)
+        except Exception:
+            messages.error(request, "Could not read CSV file.")
+            return redirect("flight_import")
+
+        created = 0
+        for row in reader:
+            try:
+                date_str = row.get("Date")
+                dep = row.get("Departure") or ""
+                arr = row.get("Arrival") or ""
+                if not date_str or not dep or not arr:
+                    continue  # skip bad lines
+
+                from datetime import datetime
+                date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+                off_block = row.get("Departure time") or None
+                on_block = row.get("Arrival time") or None
+
+                def parse_time(val):
+                    if not val:
+                        return None
+                    try:
+                        return datetime.strptime(val.strip(), "%H:%M").time()
+                    except ValueError:
+                        return None
+
+                ob_time = parse_time(off_block)
+                on_time = parse_time(on_block)
+
+                entry = FlightLogEntry(
+                    user=request.user,
+                    date=date,
+                    departure=dep,
+                    arrival=arr,
+                    off_block=ob_time,
+                    on_block=on_time,
+                    uav_type=row.get("UAV configuration") or FlightLogEntry.UavConfig.OTHER,
+                    uav_model=row.get("UAV model") or "",
+                    uav_reg=row.get("UAV registration") or "",
+                    gcs_type=row.get("GCS form factor") or "",
+                    gcs_reg=row.get("GCS registration") or "",
+                    uav_easa_class=row.get("EASA class") or "",
+                    mission_type=row.get("Mission type") or "",
+                    gcs_software=row.get("GCS software") or "",
+                    takeoff_day=int(row.get("Takeoffs (day)") or 0),
+                    takeoff_night=int(row.get("Takeoffs (night)") or 0),
+                    landing_day=int(row.get("Landings (day)") or 0),
+                    landing_night=int(row.get("Landings (night)") or 0),
+                    is_simulator=(row.get("Simulator?") or "").strip().lower() == "yes",
+                    simulator_type=row.get("Simulator type") or "",
+                    simulator_time=int(row.get("Simulator time (min)") or 0),
+                    remarks=row.get("Remarks") or "",
+                )
+                entry.save()
+                created += 1
+            except Exception:
+                # You can log errors if you want per-row diagnostics
+                continue
+
+        messages.success(request, f"Imported {created} flights from CSV.")
+        return redirect("flight_list")
+
+    return render(request, "logbook/flight_import.html")
+
+@login_required
+def settings_view(request):
+    profile, _ = PilotProfile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = PilotSettingsForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect("settings")
+    else:
+        form = PilotSettingsForm(instance=profile)
+
+    return render(request, "settings.html", {"form": form})
 
 @login_required
 def flight_create(request):
@@ -129,37 +274,26 @@ def flight_export_csv(request):
     flights = FlightLogEntry.objects.all().order_by("date")
 
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = 'attachment; filename=\"uas_logbook.csv\"'
+    response["Content-Disposition"] = 'attachment; filename="uas_logbook.csv"'
 
     writer = csv.writer(response)
 
-    # Header row – aligned with current model
     writer.writerow([
         "Date",
         "Departure",
         "Arrival",
-        "Off block",
-        "On block",
+        "Departure time",
+        "Arrival time",
         "UAV type",
         "UAV registration",
         "GCS type",
         "GCS registration",
-        "Engine class (SE/ME)",
         "Pilot role",
-        "GCS connected",
-        "Engine start",
-        "Takeoff",
-        "Landing",
-        "Engine stop",
-        "GCS disconnected",
         "Takeoffs (day)",
         "Takeoffs (night)",
         "Landings (day)",
         "Landings (night)",
         "Flight time (min)",
-        "Block time (min)",
-        "Engine time (min)",
-        "GCS time (min)",
         "Simulator?",
         "Simulator type",
         "Simulator time (min)",
@@ -173,26 +307,16 @@ def flight_export_csv(request):
             f.arrival,
             f.off_block,
             f.on_block,
-            f.uav_type,
+            f.get_uav_type_display(),
             f.uav_reg,
-            f.gcs_type,
+            f.get_gcs_type_display() if f.gcs_type else "",
             f.gcs_reg,
-            f.engine_class,
             f.get_pilot_role_display(),
-            f.connection_time,
-            f.engine_start,
-            f.takeoff,
-            f.landing,
-            f.engine_stop,
-            f.disconnection_time,
             f.takeoff_day,
             f.takeoff_night,
             f.landing_day,
             f.landing_night,
             f.flight_time,
-            f.block_time,
-            f.engine_time,
-            f.gcs_time,
             "Yes" if f.is_simulator else "No",
             f.simulator_type,
             f.simulator_time,
@@ -200,7 +324,6 @@ def flight_export_csv(request):
         ])
 
     return response
-
 
 @login_required
 def profile_view(request):

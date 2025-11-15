@@ -47,11 +47,11 @@
                     {{ form.arrival }}
                 </div>
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.off_block.id_for_label }}">Off block</label>
+                    <label class="form-label" for="{{ form.off_block.id_for_label }}">Departure time</label>
                     {{ form.off_block }}
                 </div>
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.on_block.id_for_label }}">On block</label>
+                    <label class="form-label" for="{{ form.on_block.id_for_label }}">Arrival time</label>
                     {{ form.on_block }}
                 </div>
             </div>
@@ -62,19 +62,19 @@
             <div class="form-section-title">UAV &amp; GCS</div>
             <div class="form-section-grid">
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.uav_type.id_for_label }}">UAV type</label>
+                    <label class="form-label" for="{{ form.uav_type.id_for_label }}">UAV configuration</label>
                     {{ form.uav_type }}
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.uav_model.id_for_label }}">UAV model</label>
+                    {{ form.uav_model }}
                 </div>
                 <div class="form-field">
                     <label class="form-label" for="{{ form.uav_reg.id_for_label }}">UAV registration</label>
                     {{ form.uav_reg }}
                 </div>
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.engine_class.id_for_label }}">Engine class (SE/ME)</label>
-                    {{ form.engine_class }}
-                </div>
-                <div class="form-field">
-                    <label class="form-label" for="{{ form.gcs_type.id_for_label }}">GCS type</label>
+                    <label class="form-label" for="{{ form.gcs_type.id_for_label }}">GCS form factor</label>
                     {{ form.gcs_type }}
                 </div>
                 <div class="form-field">
@@ -84,36 +84,26 @@
             </div>
         </div>
 
-        <!-- Times section -->
-        <div class="form-section">
-            <div class="form-section-title">Times</div>
-            <div class="form-section-grid">
+        <!-- Advanced classification (optional) -->
+        <details class="form-section">
+            <summary class="form-section-title" style="cursor:pointer;">
+                Advanced classification
+            </summary>
+            <div class="form-section-grid" style="margin-top:8px;">
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.connection_time.id_for_label }}">GCS connected</label>
-                    {{ form.connection_time }}
+                    <label class="form-label" for="{{ form.uav_easa_class.id_for_label }}">EASA class</label>
+                    {{ form.uav_easa_class }}
                 </div>
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.disconnection_time.id_for_label }}">GCS disconnected</label>
-                    {{ form.disconnection_time }}
+                    <label class="form-label" for="{{ form.mission_type.id_for_label }}">Mission type</label>
+                    {{ form.mission_type }}
                 </div>
                 <div class="form-field">
-                    <label class="form-label" for="{{ form.engine_start.id_for_label }}">Engine start</label>
-                    {{ form.engine_start }}
-                </div>
-                <div class="form-field">
-                    <label class="form-label" for="{{ form.engine_stop.id_for_label }}">Engine stop</label>
-                    {{ form.engine_stop }}
-                </div>
-                <div class="form-field">
-                    <label class="form-label" for="{{ form.takeoff.id_for_label }}">Takeoff</label>
-                    {{ form.takeoff }}
-                </div>
-                <div class="form-field">
-                    <label class="form-label" for="{{ form.landing.id_for_label }}">Landing</label>
-                    {{ form.landing }}
+                    <label class="form-label" for="{{ form.gcs_software.id_for_label }}">GCS software</label>
+                    {{ form.gcs_software }}
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Takeoffs / landings section -->
         <div class="form-section">

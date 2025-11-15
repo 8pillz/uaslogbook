@@ -1,10 +1,14 @@
-from django.db import models
-from django.conf import settings
 from datetime import datetime
-from django.utils import timezone
+
+from django.conf import settings
+from django.db import models
 
 
 class PilotProfile(models.Model):
+    class TimeDisplayUnit(models.TextChoices):
+        MINUTES = "MIN", "Minutes"
+        HHMM = "HMM", "Hours:Minutes (hh:mm)"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -38,6 +42,13 @@ class PilotProfile(models.Model):
         null=True,
     )
 
+    time_display_unit = models.CharField(
+        "Time display unit",
+        max_length=3,
+        choices=TimeDisplayUnit.choices,
+        default=TimeDisplayUnit.MINUTES,
+    )
+
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -53,6 +64,43 @@ class FlightLogEntry(models.Model):
         EXAMINER = "EXM", "Examiner"
         OTHER = "OTH", "Other"
 
+    class UavConfig(models.TextChoices):
+        MULTIROTOR = "MULTI", "Multirotor"
+        FIXED_WING = "FIXED", "Fixed-wing"
+        HELICOPTER = "HELI", "Helicopter"
+        VTOL = "VTOL", "VTOL / hybrid"
+        OTHER = "OTHER", "Other"
+
+    class EasaClass(models.TextChoices):
+        C0 = "C0", "C0 (<250g)"
+        C1 = "C1", "C1 (<900g)"
+        C2 = "C2", "C2 (<4kg)"
+        C3 = "C3", "C3 (<25kg)"
+        C4 = "C4", "C4 (<25kg, no automation)"
+        C5 = "C5", "C5 (STS-01)"
+        C6 = "C6", "C6 (STS-02)"
+
+    class MissionType(models.TextChoices):
+        MAP = "MAP", "Mapping / Survey"
+        INSP = "INSP", "Inspection"
+        SAR = "SAR", "Search & Rescue"
+        TRN = "TRN", "Training flight"
+        REC = "REC", "Recreational"
+        ISR = "ISR", "ISR / Surveillance"
+        CRG = "CRG", "Cargo / logistics"
+        EXP_MISSION = "EXP", "Experimental mission"
+
+    class GcsFormFactor(models.TextChoices):
+        HANDHELD = "HANDHELD", "Handheld controller"
+        TABLET = "TABLET", "Tablet controller"
+        RUGGED = "RUGGED", "Rugged tablet GCS"
+        LAPTOP = "LAPTOP", "Laptop GCS"
+        BRIEFCASE = "BRIEFCASE", "Portable briefcase GCS"
+        VEHICLE = "VEHICLE", "Vehicle-mounted GCS"
+        FIXED = "FIXED", "Fixed installation GCS"
+        FPV = "FPV", "FPV controller + goggles"
+        OTHER = "OTHER", "Other"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -61,19 +109,25 @@ class FlightLogEntry(models.Model):
 
     # ---- Flight identification ----
     date = models.DateField()
-
     departure = models.CharField("Departure location", max_length=100)
     arrival = models.CharField("Arrival location", max_length=100)
 
-    # Block times (used as "place and time of dep/arr")
-    off_block = models.TimeField("Off block (departure time)", blank=True, null=True)
-    on_block = models.TimeField("On block (arrival time)", blank=True, null=True)
+    # Only required times: departure & arrival (off/on block)
+    off_block = models.TimeField("Departure time", blank=True, null=True)
+    on_block = models.TimeField("Arrival time", blank=True, null=True)
 
     # ---- Aircraft / GCS ----
     uav_type = models.CharField(
-        "UAV type (make/model/variant)",
+        "UAV configuration",
+        max_length=10,
+        choices=UavConfig.choices,
+        help_text="Multirotor / fixed-wing / VTOL / heli, etc.",
+    )
+    uav_model = models.CharField(
+        "UAV model",
         max_length=100,
-        help_text="e.g. DJI Mavic 3, WingtraOne, etc.",
+        blank=True,
+        help_text="e.g. fixed-wing piston trainer, Mavic 3 Pro",
     )
     uav_reg = models.CharField(
         "UAV registration",
@@ -82,10 +136,11 @@ class FlightLogEntry(models.Model):
     )
 
     gcs_type = models.CharField(
-        "GCS type",
-        max_length=100,
+        "GCS form factor",
+        max_length=15,
+        choices=GcsFormFactor.choices,
         blank=True,
-        help_text="Ground control station make/model (optional)",
+        help_text="Handheld, laptop GCS, vehicle, etc.",
     )
     gcs_reg = models.CharField(
         "GCS registration / ID",
@@ -93,11 +148,24 @@ class FlightLogEntry(models.Model):
         blank=True,
     )
 
-    engine_class = models.CharField(
-        "Engine class (SE/ME)",
-        max_length=10,
+    # ---- Advanced classification (optional) ----
+    uav_easa_class = models.CharField(
+        "EASA class",
+        max_length=3,
+        choices=EasaClass.choices,
         blank=True,
-        help_text="Optional for UAS, e.g. SE/ME or empty.",
+    )
+    mission_type = models.CharField(
+        "Mission type",
+        max_length=4,
+        choices=MissionType.choices,
+        blank=True,
+    )
+    gcs_software = models.CharField(
+        "GCS software",
+        max_length=50,
+        blank=True,
+        help_text="e.g. Embention, DJI Fly, QGroundControl…",
     )
 
     # ---- Pilot function for this flight ----
@@ -106,25 +174,6 @@ class FlightLogEntry(models.Model):
         max_length=3,
         choices=PilotRole.choices,
         default=PilotRole.PIC,
-        help_text="Your function on this flight (PIC, observer, instructor, etc.)",
-    )
-
-    # ---- Operational times ----
-    connection_time = models.TimeField(
-        "GCS connected",
-        blank=True,
-        null=True,
-        help_text="Time when GCS connected to UAV",
-    )
-    engine_start = models.TimeField("Engine start", blank=True, null=True)
-    takeoff = models.TimeField("Takeoff", blank=True, null=True)
-    landing = models.TimeField("Landing", blank=True, null=True)
-    engine_stop = models.TimeField("Engine stop", blank=True, null=True)
-    disconnection_time = models.TimeField(
-        "GCS disconnected",
-        blank=True,
-        null=True,
-        help_text="Time when GCS disconnected from UAV",
     )
 
     # ---- Takeoffs / landings (day/night) ----
@@ -133,25 +182,15 @@ class FlightLogEntry(models.Model):
     landing_day = models.PositiveIntegerField("Landings (day)", default=0)
     landing_night = models.PositiveIntegerField("Landings (night)", default=0)
 
-    # ---- Durations in minutes (auto-calculated, not edited by hand) ----
+    # ---- Flight time in minutes, auto from dep/arr ----
     flight_time = models.PositiveIntegerField(
         "Flight time (min)", blank=True, null=True, editable=False
-    )
-    block_time = models.PositiveIntegerField(
-        "Block time (min)", blank=True, null=True, editable=False
-    )
-    engine_time = models.PositiveIntegerField(
-        "Engine time (min)", blank=True, null=True, editable=False
-    )
-    gcs_time = models.PositiveIntegerField(
-        "GCS time (min)", blank=True, null=True, editable=False
     )
 
     # ---- Simulator / training device ----
     is_simulator = models.BooleanField(
         "Simulator session",
         default=False,
-        help_text="Tick if this was an FSTD/simulator session rather than an actual flight.",
     )
     simulator_type = models.CharField("Simulator type", max_length=100, blank=True)
     simulator_time = models.PositiveIntegerField(
@@ -162,7 +201,6 @@ class FlightLogEntry(models.Model):
     remarks = models.TextField(
         "Remarks / skill tests / checks",
         blank=True,
-        help_text="Skill tests, proficiency checks, incidents, etc.",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -173,32 +211,24 @@ class FlightLogEntry(models.Model):
     def __str__(self):
         return f"{self.date} {self.uav_type} {self.uav_reg} ({self.user})"
 
+    # ---- Helpers for time calculations ----
     def _combine(self, t):
-        if not t:
+        if not t or not self.date:
             return None
         return datetime.combine(self.date, t)
 
     def save(self, *args, **kwargs):
-        """Auto-calc durations based purely on times."""
-        def minutes_between(start, end):
-            if start and end and end > start:
-                delta = end - start
-                return int(delta.total_seconds() // 60)
-            return None
+        """
+        Auto-calc flight time from departure & arrival
+        (off_block / on_block) in minutes.
+        """
+        start = self._combine(self.off_block)
+        end = self._combine(self.on_block)
 
-        t_takeoff = self._combine(self.takeoff)
-        t_landing = self._combine(self.landing)
-        t_off_block = self._combine(self.off_block)
-        t_on_block = self._combine(self.on_block)
-        t_eng_start = self._combine(self.engine_start)
-        t_eng_stop = self._combine(self.engine_stop)
-        t_conn = self._combine(self.connection_time)
-        t_disc = self._combine(self.disconnection_time)
-
-        # Always compute from times (they are not user-editable)
-        self.flight_time = minutes_between(t_takeoff, t_landing)
-        self.block_time = minutes_between(t_off_block, t_on_block)
-        self.engine_time = minutes_between(t_eng_start, t_eng_stop)
-        self.gcs_time = minutes_between(t_conn, t_disc)
+        if start and end and end > start:
+            delta = end - start
+            self.flight_time = int(delta.total_seconds() // 60)
+        else:
+            self.flight_time = None
 
         super().save(*args, **kwargs)

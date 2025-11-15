@@ -1,12 +1,12 @@
 from django import forms
-from .models import FlightLogEntry
-from .models import PilotProfile
+
+from .models import FlightLogEntry, PilotProfile
+
 
 class FlightLogEntryForm(forms.ModelForm):
     class Meta:
         model = FlightLogEntry
 
-        # No duration fields here – they’re auto-calculated and non-editable.
         fields = [
             # Flight
             "date",
@@ -16,20 +16,17 @@ class FlightLogEntryForm(forms.ModelForm):
             "on_block",
             "pilot_role",
 
-            # UAV / GCS
+            # UAV / GCS (simple)
             "uav_type",
+            "uav_model",
             "uav_reg",
-            "engine_class",
             "gcs_type",
             "gcs_reg",
 
-            # Times
-            "connection_time",
-            "engine_start",
-            "takeoff",
-            "landing",
-            "engine_stop",
-            "disconnection_time",
+            # Advanced classification
+            "uav_easa_class",
+            "mission_type",
+            "gcs_software",
 
             # Takeoffs / landings
             "takeoff_day",
@@ -46,18 +43,11 @@ class FlightLogEntryForm(forms.ModelForm):
 
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
-
             "off_block": forms.TimeInput(attrs={"type": "time"}),
             "on_block": forms.TimeInput(attrs={"type": "time"}),
-
-            "connection_time": forms.TimeInput(attrs={"type": "time"}),
-            "engine_start": forms.TimeInput(attrs={"type": "time"}),
-            "takeoff": forms.TimeInput(attrs={"type": "time"}),
-            "landing": forms.TimeInput(attrs={"type": "time"}),
-            "engine_stop": forms.TimeInput(attrs={"type": "time"}),
-            "disconnection_time": forms.TimeInput(attrs={"type": "time"}),
         }
-        
+
+
 class PilotProfileForm(forms.ModelForm):
     class Meta:
         model = PilotProfile
@@ -66,4 +56,10 @@ class PilotProfileForm(forms.ModelForm):
             "medical_certificate",
             "flight_crew_license",
             "other_document",
+            "time_display_unit",
         ]
+
+class PilotSettingsForm(forms.ModelForm):
+    class Meta:
+        model = PilotProfile
+        fields = ["time_display_unit"]
